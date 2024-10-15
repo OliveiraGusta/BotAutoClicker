@@ -1,4 +1,3 @@
-import webbrowser
 import pyautogui
 import time
 import random
@@ -9,14 +8,9 @@ import os
 
 # Variável global para controle de execução
 running = False
-
-# Função para abrir a URL
-def open_url(url):
-    webbrowser.open(url)
-    print(f"Abrindo URL: {url}")
+os.system('color 0B')
 
 # Função para capturar pontos na tela ao pressionar uma tecla
-
 def capture_points(num_points):
     points = []
     print(f"Para capturar um ponto, posicione o mouse e pressione 'Enter'. Total de pontos: {num_points}")
@@ -41,16 +35,12 @@ def capture_points(num_points):
         
         # Captura a posição do mouse
         x, y = pyautogui.position()
-        points.append((x, y))
+        points.append((i, x, y))
+
+        print(points)
         print(f"Posição {i + 1} capturada: {x}, {y}")
     
     return points
-
-# Função para salvar os pontos em um arquivo
-def save_points(points, filename="pontos.json"):
-    with open(filename, 'w') as f:
-        json.dump(points, f)
-    print(f"Pontos salvos no arquivo {filename}")
 
 # Função para carregar pontos de um arquivo
 def load_points(filename="pontos.json"):
@@ -86,33 +76,45 @@ def reorder_points(points):
     
     return reorder
 
+# Função para salvar uma tentativa individualmente em tempo real
+def save_attempt(attempt, filename="tentativas.txt"):
+    with open(filename, 'a') as f:  # Usamos o modo 'a' para adicionar ao arquivo sem sobrescrever
+        f.write(f"Tentativa: {attempt}\n")
+    print(f"\nTentativa salva: {attempt}\n")
+
 # Função para executar o auto clique
 def auto_click(points, delay, click_speed, num_clicks, randomize, infinite_clicks, num_cycles):
     global running
     running = True
     cycle = 0
-    
+
     while running:
-        # Reordenar os primeiros 10 pontos no início de cada ciclo
+       # Reordenar os primeiros 10 pontos no início de cada ciclo
         reordered_points = reorder_points(points)
 
         # Selecionar 8 pontos aleatórios dos primeiros 10, com repetição permitida
         random_8_points = random.choices(reordered_points[:10], k=8)
-        
+
         # Manter os pontos 11, 12 e 13 sempre incluídos
         selected_points = random_8_points + reordered_points[10:13]
 
+        # Criar a tentativa como uma string de valores `x` (segundo valor da tupla)
+        attempt = ''.join(str(point[0]) for point in selected_points if point in reordered_points[:10])
+
+        # Salvar a tentativa imediatamente
+        save_attempt(attempt)  # Salvando após cada tentativa
+
         for i, point in enumerate(selected_points):
-            if i == 13:  # Ponto 13 reservado, pular clique (caso tenha mais de 13 pontos)
+            if i == 13:  # Ponto 13 reservado, pular clique
                 print("Ponto 13 é o botão de envio, não será clicado.")
                 continue
 
             if randomize:
                 x_offset = random.randint(-5, 5)
                 y_offset = random.randint(-5, 5)
-                pyautogui.moveTo(point[0] + x_offset, point[1] + y_offset, duration=click_speed)
+                pyautogui.moveTo(point[1] + x_offset, point[2] + y_offset, duration=click_speed)
             else:
-                pyautogui.moveTo(point[0], point[1], duration=click_speed)
+                pyautogui.moveTo(point[1], point[2], duration=click_speed)
 
             for _ in range(num_clicks):  # Número de cliques por ponto
                 pyautogui.click()
@@ -137,9 +139,7 @@ def menu():
     print("\n--- MENU ---")
     print("1. Iniciar Auto-Clicker")
     print("2. Capturar Posições")
-    print("3. Visualizar Posições")
-    print("4. Carregar Posições Salvas")
-    print("5. Sair")
+    print("3. Sair")
 
 # Função principal
 def main():
@@ -170,7 +170,7 @@ def main():
                 num_cycles = int(input("Digite o número de ciclos de cliques: "))
 
             # Clique aleatório ao redor dos pontos
-            randomize = input("Deseja cliques aleatórios ao redor dos pontos? (s/n): ").lower() == 's'
+            randomize = 'n'
 
             # Iniciar o auto clicker em uma thread separada
             threading.Thread(target=auto_click, args=(points, delay, click_speed, num_clicks, randomize, infinite_clicks, num_cycles)).start()
@@ -180,38 +180,19 @@ def main():
             stop_auto_click()
 
         elif choice == '2': 
-            
-            url = input("Digite a URL para abrir: ")
-            open_url(url)
-
              # Capturar Posições
-            num_points = int(input("Número de pontos de clique (Máximo: 13): "))
+            num_points = int(input("Número de botões clicáveis (13): "))
             if num_points > 13:
                 num_points = 13
             
             points = capture_points(num_points)
 
             # Perguntar se deseja reordenar os pontos
-            reorder_choice = input("Deseja reordenar os pontos automaticamente? (s/n): ").lower()
+            reorder_choice = input("Deseja que sejam em ordem aleatoria? (s/n): ").lower()
             if reorder_choice == 's':
                 points = reorder_points(points)
 
-            save_choice = input("Deseja salvar as posições capturadas? (s/n): ").lower()
-            if save_choice == 's':
-                save_points(points)
-
-        elif choice == '3':  # Visualizar Posições
-            if points:
-                print("Posições capturadas:")
-                for i, (x, y) in enumerate(points):
-                    print(f"Posição {i + 1}: X = {x}, Y = {y}")
-            else:
-                print("Nenhuma posição capturada ainda!")
-
-        elif choice == '4':  # Carregar Posições Salvas
-            points = load_points()
-
-        elif choice == '5':  # Sair
+        elif choice == '3':  # Sair
             confirm_exit = input("Tem certeza que deseja sair? (s/n): ").lower()
             if confirm_exit == 's':
                 print("Saindo do programa.")
